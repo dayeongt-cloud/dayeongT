@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>과학자의 딜레마 - 미래 윤리 연구소 (Cyberpunk Science Ethics Simulator)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts & Font Awesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@300;400;700;900&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pixelBg: '#0b0d17',
+                        pixelFrame: '#1b2234',
+                        pixelPanel: '#121826',
+                        pixelGreen: '#00ff66',
+                        pixelCyan: '#00e5ff',
+                        pixelRed: '#ff2a6d',
+                        pixelYellow: '#ffe600',
+                        pixelPurple: '#b537f2',
+                        pixelGray: '#3a445d'
+                    },
+                    fontFamily: {
+                        retro: ['"Press Start 2P"', 'monospace'],
+                        terminal: ['"VT323"', 'monospace'],
+                        sans: ['"Noto Sans KR"', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* CRT Scanline and Flicker Overlay */
+        .crt-screen {
+            position: relative;
+            overflow: hidden;
+        }
+        .crt-screen::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 40;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+        
+        /* Custom Pixel Borders */
+        .pixel-border {
+            border: 4px solid #3a445d;
+            box-shadow: inset -4px -4px 0px 0px #090c14, inset 4px 4px 0px 0px #4b5878;
+        }
+        .pixel-button {
+            transition: all 0.1s ease;
+            box-shadow: inset -3px -3px 0px 0px rgba(0,0,0,0.5), inset 3px 3px 0px 0px rgba(255,255,255,0.3);
+        }
+        .pixel-button:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.2);
+        }
+        .pixel-button:active {
+            transform: translateY(2px);
+            box-shadow: inset 3px 3px 0px 0px rgba(0,0,0,0.5);
+        }
+
+        /* Screen Shake Animation on High Danger/Risk */
+        @keyframes screen-shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-2px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shake-effect {
+            animation: screen-shake 0.5s ease-in-out;
+        }
+
+        /* Green Flash Effect on High Trust Gain */
+        @keyframes green-flash {
+            0% { background-color: rgba(0, 255, 102, 0.4); }
+            100% { background-color: transparent; }
+        }
+        .green-flash-effect {
+            animation: green-flash 0.8s ease-out;
+        }
+
+        /* Stat Bar Glow/Glint Animation when values change */
+        @keyframes stat-glint {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(2) drop-shadow(0 0 8px #ffffff); }
+            100% { filter: brightness(1); }
+        }
+        .stat-bar-pulse {
+            animation: stat-glint 0.6s ease-in-out 2;
+        }
+
+        /* Animated Glowing Text */
+        .glow-text-cyan {
+            text-shadow: 0 0 8px rgba(0, 229, 255, 0.7);
+        }
+        .glow-text-green {
+            text-shadow: 0 0 8px rgba(0, 255, 102, 0.7);
+        }
+        .glow-text-red {
+            text-shadow: 0 0 8px rgba(255, 42, 109, 0.7);
+        }
+
+        /* Custom Scrollbar for Terminal aesthetic */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0d17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3a445d;
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00e5ff;
+        }
+    </style>
+</head>
+<body class="bg-pixelBg text-gray-200 font-sans min-h-screen flex flex-col justify-between selection:bg-pixelCyan selection:text-black">
+
+    <!-- Top Navigation / Game Header -->
+    <header class="bg-pixelFrame border-b-4 border-gray-800 p-3 sm:px-6 flex justify-between items-center z-50">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid font-retro text-2xl text-pixelCyan fa-flask-vial glow-text-cyan"></i>
+            <div>
+                <h1 class="font-retro text-xs sm:text-sm text-pixelCyan tracking-wider uppercase">ETHICS DILEMMA LAB</h1>
+                <p class="text-xs text-gray-400">현대사회와 윤리: 과학자의 가치 중립 vs 가치 지향</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 sm:gap-4">
+            <button id="audio-toggle-btn" class="bg-gray-800 hover:bg-gray-700 text-pixelYellow text-xs p-2 rounded pixel-border flex items-center gap-2">
+                <i class="fa-solid fa-volume-high" id="sound-icon"></i>
+                <span class="hidden sm:inline font-terminal text-sm">SOUND ON</span>
+            </button>
+            <button id="btn-show-discussion" class="bg-pixelPurple hover:bg-purple-600 text-white text-xs px-3 py-2 rounded pixel-button font-retro flex items-center gap-2">
+                <i class="fa-solid fa-comments"></i>
+                <span>실시간 토론방</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game & App Container -->
+    <main class="flex-grow container mx-auto p-2 sm:p-4 max-w-6xl crt-screen">
+
+        <!-- SCREEN 1: CHARACTER SELECTION SCREEN -->
+        <section id="screen-character-select" class="space-y-6 my-4">
+            <div class="bg-pixelPanel p-6 rounded-lg pixel-border text-center space-y-3">
+                <h2 class="font-retro text-lg sm:text-xl text-pixelGreen glow-text-green">연구자 프로필 선택 (CHARACTER SELECT)</h2>
+                <p class="text-gray-300 text-sm max-w-2xl mx-auto">
+                    당신은 미래 과학 윤리 연구소의 수석 연구원으로 임명되었습니다.<br/> 
+                    어떤 분야의 과학자가 되어 연구와 윤리 사이의 딜레마를 헤쳐나가시겠습니까?
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="character-card-container">
+                <!-- Dynamic Character Cards inserted via JS -->
+            </div>
+        </section>
+
+        <!-- SCREEN 2: MAIN LAB DILEMMA GAMEPLAY -->
+        <section id="screen-gameplay" class="hidden space-y-4 my-2">
+            
+            <!-- Real-time Ethical Value Orientation Tracker & Stats Bar -->
+            <div class="bg-pixelFrame p-3 sm:p-4 rounded-lg pixel-border space-y-3">
+                <!-- Value Orientation Live Tracker (Neutrality vs Responsibility) -->
+                <div class="bg-pixelBg p-2.5 rounded border border-gray-700">
+                    <div class="flex justify-between text-[11px] font-retro mb-1">
+                        <span class="text-pixelCyan flex items-center gap-1"><i class="fa-solid fa-scale-unbalanced"></i> 가치 지향 (윤리적 책임)</span>
+                        <span class="text-gray-400">현재 성향 추적</span>
+                        <span class="text-pixelYellow flex items-center gap-1">가치 중립 (순수 탐구) <i class="fa-solid fa-microscope"></i></span>
+                    </div>
+                    <div class="w-full bg-gray-800 h-3.5 rounded-full overflow-hidden border border-gray-600 flex">
+                        <div id="tracker-responsibility-bar" class="bg-pixelCyan h-full transition-all duration-500" style="width: 50%"></div>
+                        <div id="tracker-neutrality-bar" class="bg-pixelYellow h-full transition-all duration-500" style="width: 50%"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] font-mono text-gray-400 mt-1">
+                        <span id="tracker-resp-pct">가치지향 50%</span>
+                        <span id="tracker-neutral-pct">가치중립 50%</span>
+                    </div>
+                </div>
+
+                <!-- Numerical Theme Stats -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-retro">
+                    <div class="bg-pixelBg p-2 rounded border border-gray-700 flex flex-col justify-between">
+                        <span class="text-pixelCyan flex items-center gap-1"><i class="fa-solid fa-flask"></i> 연구 성과</span>
+                        <div class="w-full bg-gray-800 h-3 rounded-full mt-1 overflow-hidden border border-gray-600">
+                            <div id="stat-progress-bar" class="bg-pixelCyan h-full transition-all duration-500" style="width: 50%"></div>
+                        </div>
+                        <span id="stat-progress-val" class="text-right text-pixelCyan font-terminal text-base mt-1">50%</span>
+                    </div>
+
+                    <div class="bg-pixelBg p-2 rounded border border-gray-700 flex flex-col justify-between">
+                        <span class="text-pixelYellow flex items-center gap-1"><i class="fa-solid fa-coins"></i> 연구 팀 예산</span>
+                        <div class="w-full bg-gray-800 h-3 rounded-full mt-1 overflow-hidden border border-gray-600">
+                            <div id="stat-funding-bar" class="bg-pixelYellow h-full transition-all duration-500" style="width: 50%"></div>
+                        </div>
+                        <span id="stat-funding-val" class="text-right text-pixelYellow font-terminal text-base mt-1">50%</span>
+                    </div>
+
+                    <div class="bg-pixelBg p-2 rounded border border-gray-700 flex flex-col justify-between">
+                        <span class="text-pixelGreen flex items-center gap-1"><i class="fa-solid fa-users"></i> 사회적 신뢰</span>
+                        <div class="w-full bg-gray-800 h-3 rounded-full mt-1 overflow-hidden border border-gray-600">
+                            <div id="stat-social-bar" class="bg-pixelGreen h-full transition-all duration-500" style="width: 50%"></div>
+                        </div>
+                        <span id="stat-social-val" class="text-right text-pixelGreen font-terminal text-base mt-1">50%</span>
+                    </div>
+
+                    <div class="bg-pixelBg p-2 rounded border border-gray-700 flex flex-col justify-between">
+                        <span class="text-pixelRed flex items-center gap-1"><i class="fa-solid fa-biohazard"></i> 사회적 피해/위험</span>
+                        <div class="w-full bg-gray-800 h-3 rounded-full mt-1 overflow-hidden border border-gray-600">
+                            <div id="stat-risk-bar" class="bg-pixelRed h-full transition-all duration-500" style="width: 20%"></div>
+                        </div>
+                        <span id="stat-risk-val" class="text-right text-pixelRed font-terminal text-base mt-1">20%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lab Console Main Stage -->
+            <div class="bg-pixelPanel p-4 sm:p-6 rounded-lg pixel-border grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Left: Scientist Pixel Avatar & Profile -->
+                <div class="lg:col-span-4 bg-pixelFrame p-4 rounded-lg border-2 border-gray-700 flex flex-col items-center text-center space-y-3">
+                    <div class="w-40 h-40 bg-pixelBg rounded-lg pixel-border flex items-center justify-center p-2 relative overflow-hidden" id="character-portrait-box">
+                    </div>
+                    <div>
+                        <h3 id="game-char-name" class="font-retro text-pixelCyan text-sm font-bold">Dr. Rosarium</h3>
+                        <p id="game-char-role" class="text-xs text-pixelYellow font-terminal text-base mt-1">AI & 인공지능 윤리 수석 연구원</p>
+                    </div>
+                    <div id="game-char-bio" class="text-xs text-gray-300 bg-pixelBg p-3 rounded border border-gray-800 leading-relaxed text-left">
+                    </div>
+                </div>
+
+                <!-- Right: Scenario Terminal & Decision Visualizer -->
+                <div class="lg:col-span-8 flex flex-col space-y-4">
+                    
+                    <!-- Scenario Dialog Box -->
+                    <div class="bg-pixelBg p-4 sm:p-5 rounded-lg border-2 border-pixelCyan/40 min-h-[220px] flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex justify-between items-center border-b border-gray-800 pb-2 mb-3">
+                                <span class="font-retro text-xs text-pixelGreen flex items-center gap-2">
+                                    <i class="fa-solid fa-terminal animate-pulse"></i> 
+                                    SCENARIO PHASES: <span id="scenario-step-idx">1</span> / 10
+                                </span>
+                                <span id="scenario-topic-tag" class="text-xs bg-gray-800 text-pixelYellow px-2 py-0.5 rounded font-mono">가치 중립 vs 가치 지향</span>
+                            </div>
+                            <h4 id="scenario-title" class="font-retro text-sm sm:text-base text-pixelYellow mb-2 leading-relaxed">
+                                시나리오 제목 불러오는 중...
+                            </h4>
+                            <p id="scenario-text" class="text-gray-200 text-sm sm:text-base leading-relaxed font-sans">
+                                시나리오 내용이 화면에 출력됩니다.
+                            </p>
+                        </div>
+
+                        <!-- Impact Visualizer Card (Visualizes changes after choice) -->
+                        <div id="decision-impact-card" class="hidden p-3 rounded bg-pixelFrame border border-pixelCyan space-y-2 animate-fade-in">
+                            <div class="text-[11px] font-retro text-pixelYellow flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line"></i> 선택이 미친 수치별 영향도 (IMPACT VISUALIZER)
+                            </div>
+                            <div id="impact-badges-container" class="flex flex-wrap gap-2 text-xs font-mono">
+                            </div>
+                            <div id="decision-feedback-text" class="text-xs text-gray-200 pt-1 border-t border-gray-800">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Choice Action Buttons -->
+                    <div class="space-y-3" id="choice-buttons-container">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 3: ENDING RESULT & 4-TYPE ETHICAL DIAGNOSIS -->
+        <section id="screen-result" class="hidden space-y-6 my-4">
+            <div class="bg-pixelPanel p-6 sm:p-8 rounded-lg pixel-border text-center space-y-4">
+                <div class="inline-block p-3 bg-pixelFrame rounded-full border-2 border-pixelYellow mb-2">
+                    <i id="ending-icon" class="fa-solid fa-trophy text-4xl text-pixelYellow glow-text-yellow animate-bounce"></i>
+                </div>
+                <h2 class="font-retro text-xl sm:text-2xl text-pixelCyan glow-text-cyan">연구 시뮬레이션 완료</h2>
+                <p class="text-gray-300 text-sm max-w-xl mx-auto">
+                    당신의 10가지 윤리적 선택이 만든 연구 결과와 사회적 운명입니다.
+                </p>
+
+                <!-- 4 Ending Types Result Card -->
+                <div class="bg-pixelBg p-6 rounded-lg pixel-border max-w-2xl mx-auto my-4 space-y-3">
+                    <span class="text-xs text-gray-400 font-retro">FINAL ENDING DIAGNOSIS</span>
+                    <h3 id="result-ending-title" class="font-retro text-2xl text-pixelGreen glow-text-green">
+                        [엔딩 1] 책임 있는 혁신 (Responsible Innovation)
+                    </h3>
+                    <p id="result-ending-desc" class="text-sm text-gray-300 leading-relaxed text-left bg-pixelFrame p-4 rounded border border-gray-700 whitespace-pre-line">
+                        결과 불러오는 중...
+                    </p>
+                </div>
+
+                <!-- Final Stats Recap -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto font-terminal text-lg">
+                    <div class="bg-pixelFrame p-3 rounded border border-gray-700">
+                        <div class="text-xs text-gray-400">연구 성과</div>
+                        <div id="final-stat-progress" class="text-pixelCyan font-bold text-xl">0%</div>
+                    </div>
+                    <div class="bg-pixelFrame p-3 rounded border border-gray-700">
+                        <div class="text-xs text-gray-400">연구팀 예산</div>
+                        <div id="final-stat-funding" class="text-pixelYellow font-bold text-xl">0%</div>
+                    </div>
+                    <div class="bg-pixelFrame p-3 rounded border border-gray-700">
+                        <div class="text-xs text-gray-400">사회적 신뢰</div>
+                        <div id="final-stat-social" class="text-pixelGreen font-bold text-xl">0%</div>
+                    </div>
+                    <div class="bg-pixelFrame p-3 rounded border border-gray-700">
+                        <div class="text-xs text-gray-400">사회적 피해</div>
+                        <div id="final-stat-risk" class="text-pixelRed font-bold text-xl">0%</div>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex flex-wrap justify-center gap-4">
+                    <button id="btn-restart-game" class="bg-gray-700 hover:bg-gray-600 text-white font-retro text-xs px-6 py-3 rounded pixel-button">
+                        <i class="fa-solid fa-rotate-left mr-2"></i> 다른 과학자로 재도전
+                    </button>
+                    <button id="btn-share-to-forum" class="bg-pixelGreen hover:bg-green-500 text-black font-bold font-retro text-xs px-6 py-3 rounded pixel-button">
+                        <i class="fa-solid fa-comments mr-2"></i> 실시간 3대 토론방 참여하기
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- MODAL: REAL-TIME 3 QUESTION DISCUSSION BOARD -->
+        <section id="modal-discussion" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+            <div class="bg-pixelPanel w-full max-w-5xl h-[95vh] sm:h-[90vh] rounded-lg pixel-border flex flex-col overflow-hidden">
+                
+                <!-- Discussion Header -->
+                <div class="bg-pixelFrame p-3 sm:p-4 border-b-2 border-gray-700 flex justify-between items-center shrink-0">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-comments text-pixelCyan text-xl sm:text-2xl"></i>
+                        <div>
+                            <h3 class="font-retro text-xs sm:text-sm text-pixelCyan">과학기술 윤리 실시간 토론 광장</h3>
+                            <p class="text-[11px] sm:text-xs text-gray-400">전체 학생 실시간 공유 & 3가지 핵심 질문 토론</p>
+                        </div>
+                    </div>
+                    <button id="btn-close-discussion" class="text-gray-400 hover:text-white text-2xl p-1">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Topic Selector Tabs -->
+                <div class="bg-pixelBg p-2 border-b border-gray-800 flex gap-1 sm:gap-2 text-[11px] sm:text-xs font-retro shrink-0 overflow-x-auto">
+                    <button id="tab-q1" onclick="switchTopicTab(1)" class="flex-1 min-w-[100px] py-2 px-2 rounded bg-pixelCyan text-black font-bold truncate">
+                        Q1. 고민한 선택
+                    </button>
+                    <button id="tab-q2" onclick="switchTopicTab(2)" class="flex-1 min-w-[100px] py-2 px-2 rounded bg-pixelFrame text-gray-300 hover:text-white truncate">
+                        Q2. 이해관계 충돌
+                    </button>
+                    <button id="tab-q3" onclick="switchTopicTab(3)" class="flex-1 min-w-[100px] py-2 px-2 rounded bg-pixelFrame text-gray-300 hover:text-white truncate">
+                        Q3. 가치 보완 제도
+                    </button>
+                </div>
+
+                <!-- Main Forum Body (Mobile Optimized Flex Column) -->
+                <div class="flex-grow flex flex-col md:flex-row overflow-hidden min-h-0">
+                    
+                    <!-- Left: Selected Topic Description & User Name Input -->
+                    <div class="w-full md:w-1/3 bg-pixelFrame p-3 sm:p-4 border-b md:border-b-0 md:border-r border-gray-800 space-y-3 overflow-y-auto shrink-0 max-h-[35vh] md:max-h-full">
+                        <div id="topic-info-box" class="bg-pixelBg p-3 rounded border border-gray-700 space-y-1.5">
+                            <!-- Dynamic Topic Info inserted via JS -->
+                        </div>
+
+                        <!-- Nickname & Identity Card for Mobile/Desktop -->
+                        <div id="auth-status-card" class="bg-pixelBg p-3 rounded border border-gray-700 space-y-2">
+                            <div class="text-[11px] font-retro text-pixelYellow">연구원 작성자 이름 설정</div>
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-user-astronaut text-pixelCyan text-lg"></i>
+                                <input type="text" id="student-nickname-input" placeholder="이름/학번 입력 (예: 20101 홍길동)" 
+                                    class="w-full bg-pixelFrame border border-gray-600 rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-pixelCyan font-sans" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Topic Thread Feed & Post Input -->
+                    <div class="w-full md:w-2/3 flex flex-col bg-pixelBg flex-grow min-h-0">
+                        
+                        <!-- Posts & Comments Container (Scrollable) -->
+                        <div id="forum-posts-container" class="flex-grow p-3 sm:p-4 space-y-3 overflow-y-auto min-h-0">
+                        </div>
+
+                        <!-- Post Submission Form (Fixed at bottom on Mobile/Desktop) -->
+                        <form id="forum-input-form" onsubmit="handleFormSubmit(event)" class="p-2 sm:p-3 bg-pixelFrame border-t border-gray-800 flex flex-col gap-2 shrink-0">
+                            <textarea id="forum-input-text" rows="2" placeholder="이 질문에 대한 자신의 윤리적 견해를 작성해 주세요..." 
+                                class="w-full bg-pixelBg border border-gray-700 rounded px-3 py-2 text-xs text-white focus:outline-none focus:border-pixelCyan resize-none font-sans" required></textarea>
+                            <div class="flex justify-between items-center gap-2">
+                                <span class="text-[10px] text-gray-400 hidden sm:inline">🌐 실시간으로 전체 학생에게 바로 공유됩니다.</span>
+                                <button type="submit" class="w-full sm:w-auto bg-pixelCyan hover:bg-cyan-400 text-black font-bold text-xs px-5 py-2.5 rounded font-retro pixel-button flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                    <span>답변 등록</span>
+                                </button>
+                            </div>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    <!-- Main Game Engine Script Update -->
+    <script>
+        /* BASE ETHICS GAME ENGINE FIRST TO PREVENT REFERENCE ERROR */
+        class EthicsGameEngine {
+            constructor() {
+                this.selectedChar = null;
+                this.currentStep = 0;
+                this.stats = { progress: 50, funding: 50, social: 50, risk: 20 };
+                this.neutralityScore = 0; // Positive = Neutrality, Negative = Responsibility
+                this.history = [];
+                this.lastAlignment = "";
+            }
+
+            selectCharacter(charId) {
+                this.selectedChar = CHARACTERS.find(c => c.id === charId);
+                this.stats = { ...this.selectedChar.initialStats };
+                this.currentStep = 0;
+                this.neutralityScore = 0;
+                this.history = [];
+
+                // Update Gameplay UI
+                document.getElementById('game-char-name').textContent = this.selectedChar.name;
+                document.getElementById('game-char-role').textContent = this.selectedChar.field;
+                document.getElementById('game-char-bio').textContent = this.selectedChar.desc;
+                document.getElementById('character-portrait-box').innerHTML = this.selectedChar.avatarSvg;
+
+                this.updateStatsUI();
+                this.loadScenario(0);
+
+                // Screen Switch
+                document.getElementById('screen-character-select').classList.add('hidden');
+                document.getElementById('screen-gameplay').classList.remove('hidden');
+                document.getElementById('screen-result').classList.add('hidden');
+            }
+
+            updateStatsUI() {
+                // Clamp values between 0 and 100
+                ['progress', 'funding', 'social', 'risk'].forEach(key => {
+                    this.stats[key] = Math.max(0, Math.min(100, this.stats[key]));
+                });
+
+                document.getElementById('stat-progress-bar').style.width = `${this.stats.progress}%`;
+                document.getElementById('stat-progress-val').textContent = `${this.stats.progress}%`;
+
+                document.getElementById('stat-funding-bar').style.width = `${this.stats.funding}%`;
+                document.getElementById('stat-funding-val').textContent = `${this.stats.funding}%`;
+
+                document.getElementById('stat-social-bar').style.width = `${this.stats.social}%`;
+                document.getElementById('stat-social-val').textContent = `${this.stats.social}%`;
+
+                document.getElementById('stat-risk-bar').style.width = `${this.stats.risk}%`;
+                document.getElementById('stat-risk-val').textContent = `${this.stats.risk}%`;
+            }
+
+            loadScenario(index) {
+                if (index >= SCENARIOS.length) {
+                    this.finishGame();
+                    return;
+                }
+
+                this.currentStep = index;
+                const sc = SCENARIOS[index];
+
+                document.getElementById('scenario-step-idx').textContent = index + 1;
+                document.getElementById('scenario-topic-tag').textContent = sc.topic;
+                document.getElementById('scenario-title').textContent = sc.title;
+                document.getElementById('scenario-text').textContent = sc.text;
+
+                const feedbackEl = document.getElementById('decision-impact-card');
+                feedbackEl.classList.add('hidden');
+
+                // Render Action Buttons
+                const btnContainer = document.getElementById('choice-buttons-container');
+                btnContainer.innerHTML = sc.choices.map((choice, i) => `
+                    <button onclick="window.gameEngine.makeChoice(${i})" 
+                        class="w-full text-left bg-pixelFrame hover:bg-gray-800 border-2 border-gray-700 hover:border-pixelCyan p-4 rounded-lg pixel-button transition flex items-start gap-3 group">
+                        <span class="bg-pixelBg group-hover:bg-pixelCyan group-hover:text-black font-retro text-xs px-2.5 py-1 rounded border border-gray-600 font-bold transition">
+                            0${i+1}
+                        </span>
+                        <span class="text-xs sm:text-sm text-gray-200 group-hover:text-white leading-relaxed font-sans">
+                            ${choice.label}
+                        </span>
+                    </button>
+                `).join('');
+            }
+        }
+
+        /* GAME DATA & CHARACTERS */
+        const CHARACTERS = [
+            {
+                id: 'rosarium',
+                name: 'Dr. 로자리움',
+                field: '자율주행 & 군사 AI 전문',
+                desc: '인공지능의 효율성과 자율성을 신봉합니다. 군용 드론 AI 기술이 의료 구호 로봇으로도 쓰일 수 있다고 믿지만, 군사 무기화의 위협에 직면해 있습니다.',
+                avatarSvg: `<svg viewBox="0 0 64 64" class="w-full h-full"><rect width="64" height="64" fill="#1b2234"/><rect x="20" y="16" width="24" height="24" fill="#e0e0e0"/><rect x="24" y="22" width="6" height="6" fill="#00e5ff"/><rect x="34" y="22" width="6" height="6" fill="#00e5ff"/><rect x="28" y="32" width="8" height="2" fill="#333"/><path d="M16 40 L48 40 L52 64 L12 64 Z" fill="#ffffff"/><rect x="26" y="40" width="12" height="24" fill="#00ff66"/><circle cx="44" cy="24" r="4" fill="#ff2a6d"/></svg>`,
+                initialStats: { progress: 50, funding: 60, social: 40, risk: 30 }
+            },
+            {
+                id: 'elena',
+                name: 'Dr. 엘레나',
+                field: '유전자 편집 & 생명공학',
+                desc: '희귀 난치병 치료를 위해 크리스퍼 유전자 가위 기술을 연구합니다. 빠른 임상 적용을 위한 위험 감수와 생명 윤리 가이드라인 사이에서 고뇌합니다.',
+                avatarSvg: `<svg viewBox="0 0 64 64" class="w-full h-full"><rect width="64" height="64" fill="#1b2234"/><rect x="20" y="14" width="24" height="26" fill="#f5d0a9"/><rect x="18" y="10" width="28" height="10" fill="#b537f2"/><rect x="24" y="24" width="5" height="5" fill="#333"/><rect x="35" y="24" width="5" height="5" fill="#333"/><rect x="28" y="33" width="8" height="2" fill="#d9534f"/><path d="M14 40 L50 40 L54 64 L10 64 Z" fill="#ffffff"/><rect x="28" y="40" width="8" height="24" fill="#b537f2"/></svg>`,
+                initialStats: { progress: 45, funding: 40, social: 70, risk: 20 }
+            },
+            {
+                id: 'marcus',
+                name: 'Dr. 마르쿠스',
+                field: '양자 에너지 & 무한 동력',
+                desc: '인류의 에너지 위기를 해결할 양자 융합 원자로를 개발합니다. 국가 안보용 초강력 무기 기술로의 전용 요구 압박을 받고 있습니다.',
+                avatarSvg: `<svg viewBox="0 0 64 64" class="w-full h-full"><rect width="64" height="64" fill="#1b2234"/><rect x="20" y="16" width="24" height="24" fill="#d7ccc8"/><rect x="18" y="12" width="28" height="8" fill="#4e342e"/><rect x="22" y="22" width="7" height="7" fill="#ffe600"/><rect x="35" y="22" width="7" height="7" fill="#ffe600"/><rect x="26" y="32" width="12" height="3" fill="#5d4037"/><path d="M14 40 L50 40 L54 64 L10 64 Z" fill="#37474f"/><rect x="26" y="44" width="12" height="20" fill="#ffe600"/></svg>`,
+                initialStats: { progress: 60, funding: 70, social: 30, risk: 40 }
+            },
+            {
+                id: 'sophia',
+                name: 'Dr. 소피아',
+                field: '뇌-컴퓨터 인터페이스(BCI)',
+                desc: '전신 마비 환자에게 신경 신호를 통한 자유를 주는 뇌 칩을 개발합니다. 정보기관의 뇌 데이터 감시 및 사생활 침해 요구와 대립합니다.',
+                avatarSvg: `<svg viewBox="0 0 64 64" class="w-full h-full"><rect width="64" height="64" fill="#1b2234"/><rect x="20" y="16" width="24" height="24" fill="#ffe0b2"/><rect x="18" y="12" width="28" height="6" fill="#ffb74d"/><rect x="24" y="24" width="5" height="5" fill="#00ff66"/><rect x="35" y="24" width="5" height="5" fill="#00ff66"/><rect x="28" y="33" width="8" height="2" fill="#e65100"/><path d="M14 40 L50 40 L54 64 L10 64 Z" fill="#eceff1"/><rect x="28" y="40" width="8" height="24" fill="#00e5ff"/></svg>`,
+                initialStats: { progress: 40, funding: 50, social: 60, risk: 15 }
+            }
+        ];
+
+        /* 10 CORE ETHICAL DILEMMA SCENARIOS */
+        const SCENARIOS = [
+            {
+                id: 1,
+                topic: "가치 중립 vs 가치 지향",
+                title: "연구 결과의 미래 파급력과 연구자의 가치관",
+                text: "당신의 핵심 연구 기술이 완성 단계에 다다랐습니다. 과학은 순수한 객관적 사실 탐구이므로 사용 방식은 사회에 맡겨야 한다는 의견(가치 중립)과, 연구 시작 단계부터 사회적 피해 가능성을 예측하고 책임져야 한다는 의견(가치 지향)이 연구팀 내에서 맞서고 있습니다.",
+                choices: [
+                    {
+                        label: "Option A: 과학자는 오직 기술적 성과와 사실에만 집중한다. (가치 중립론)",
+                        neutralScore: +2,
+                        stats: { progress: +15, funding: +10, social: -10, risk: +15 },
+                        feedback: "연구 진행 속도가 크게 빨라졌으나, 기술의 사회적 안전장치에 대한 우려가 커졌습니다."
+                    },
+                    {
+                        label: "Option B: 윤리적 파장 평가를 위해 연구 검증 절차를 추가한다. (가치 지향론)",
+                        neutralScore: -2,
+                        stats: { progress: -10, funding: -5, social: +20, risk: -15 },
+                        feedback: "연구 속도는 지연되었지만, 대중의 윤리적 신뢰와 안정성을 확보했습니다."
+                    }
+                ]
+            },
+            {
+                id: 2,
+                topic: "위험 감수 vs 안전성",
+                title: "검증되지 않은 고위험 임상 시험 강행 여부",
+                text: "치명적인 부작용 위험이 있지만, 성공할 경우 파급력이 엄청난 핵심 실험 단계입니다. 규제 당국의 정식 승인을 기다리면 2년이 걸리지만, 비공식 임상 테스트를 진행하면 당장 성과를 낼 수 있습니다.",
+                choices: [
+                    {
+                        label: "Option A: 획기적 연구 성과를 위해 위험을 무릅쓰고 조기 실험을 강행한다.",
+                        neutralScore: +1,
+                        stats: { progress: +20, funding: +15, social: -15, risk: +25 },
+                        feedback: "실험 데이터는 확보했으나, 부작용 위험성이 극도로 상승하여 윤리 위원회의 조사를 받게 됩니다."
+                    },
+                    {
+                        label: "Option B: 안전성 검증을 마치기 전까지 실험을 엄격히 중단하고 보완한다.",
+                        neutralScore: -1,
+                        stats: { progress: -15, funding: -10, social: +15, risk: -20 },
+                        feedback: "연구 진행은 더뎌졌으나 치명적인 사고 위험을 사전에 방지했습니다."
+                    }
+                ]
+            },
+            {
+                id: 3,
+                topic: "군사적 활용 딜레마",
+                title: "국방부 및 군수업체의 막대한 연구비 지원 제안",
+                text: "국가 안보 및 군사적 목적의 무기 체계 탑재를 조건으로 군수 기업이 연구소 연간 예산의 5배에 달하는 대규모 펀딩을 제안했습니다. 연구비 부족으로 연구실 폐쇄 위기에 놓인 상태입니다.",
+                choices: [
+                    {
+                        label: "Option A: 연구 자금을 확보하고 연구원들의 고용을 지키기 위해 군사 연구 계약을 체결한다.",
+                        neutralScore: +2,
+                        stats: { progress: +15, funding: +35, social: -25, risk: +20 },
+                        feedback: "연구소는 풍부한 예산을 얻었지만, 당신의 연구는 살상용 기술로 개조되기 시작합니다."
+                    },
+                    {
+                        label: "Option B: 평화적 목적 이외의 군사적 이용 거부를 선언하고 제안을 거절한다.",
+                        neutralScore: -2,
+                        stats: { progress: -5, funding: -30, social: +25, risk: -10 },
+                        feedback: "연구 예산 압박이 극심해졌지만, 평화적 연구 기관으로서의 명성을 얻었습니다."
+                    }
+                ]
+            },
+            {
+                id: 4,
+                topic: "오픈소스 vs 특허 독점",
+                title: "연구 성과의 대중적 공개(오픈소스) 논란",
+                text: "개발된 원천 기술을 전 세계에 무료 공개(Open Source)하여 인류 보편의 혜택으로 만들 것인지, 아니면 거대 기업에 독점 특허로 팔아 거대의 상업적 수익을 창출할 것인지 결정해야 합니다.",
+                choices: [
+                    {
+                        label: "Option A: 모든 연구 소스코드와 데이터 시트를 무료로 전 세계에 공개한다.",
+                        neutralScore: -1,
+                        stats: { progress: +10, funding: -15, social: +30, risk: +5 },
+                        feedback: "전 세계 과학계의 찬사를 받았으나, 악의적인 집단이 이 기술을 악용할 위험도 동시에 열렸습니다."
+                    },
+                    {
+                        label: "Option B: 글로벌 독점 특허를 등록하고 거대 기업과 라이선스 계약을 맺는다.",
+                        neutralScore: +1,
+                        stats: { progress: +5, funding: +30, social: -15, risk: -5 },
+                        feedback: "엄청난 자본이 유입되었으나, 빈곤국이나 일반 대중의 기술 접근권은 차단되었습니다."
+                    }
+                ]
+            },
+            {
+                id: 5,
+                topic: "내부 고발(Whistleblowing)",
+                title: "기술 악용 가능성의 감지 및 공론화",
+                text: "동료 연구진 일부가 당신 몰래 연구 데이터를 수정하여 잠재적 치명 결함을 은폐한 정황을 발견했습니다. 이를 외부에 고발하면 연구팀 전체가 해체되고 자신의 매장 위험이 있습니다.",
+                choices: [
+                    {
+                        label: "Option A: 조직의 생존과 연구 팀원을 위해 내부적으로 조용히 해결하려 시도한다.",
+                        neutralScore: +2,
+                        stats: { progress: +5, funding: +5, social: -20, risk: +25 },
+                        feedback: "연구팀은 유지되었으나 결함이 은폐되어 언젠가 터질 시한폭탄이 되었습니다."
+                    },
+                    {
+                        label: "Option B: 학학 윤리 위원회와 언론에 사실을 솔직히 내부 고발한다.",
+                        neutralScore: -2,
+                        stats: { progress: -20, funding: -20, social: +30, risk: -30 },
+                        feedback: "연구팀은 해체 위기를 맞았으나 과학적 정직성과 사회적 안전을 지켜냈습니다."
+                    }
+                ]
+            },
+            {
+                id: 6,
+                topic: "데이터 프라이버시",
+                title: "빅데이터 수집과 개인 정보 무단 활용",
+                text: "AI/신경망 학습 모델의 성능을 획기적으로 향상시키기 위해서는 사용자 100만 명의 민감한 개인 데이터와 생체 정보가 필요한 상황입니다. 사용자 동의 절차는 복잡하고 시간이 오래 걸립니다.",
+                choices: [
+                    {
+                        label: "Option A: 획기적인 모델 정확도를 위해 암암리에 가공된 데이터를 학습에 활용한다.",
+                        neutralScore: +1,
+                        stats: { progress: +25, funding: +10, social: -20, risk: +20 },
+                        feedback: "기술 성능은 세계 최고 수준에 도달했지만, 프라이버시 침해 논란이 거세집니다."
+                    },
+                    {
+                        label: "Option B: 데이터 수집 수량을 줄이더라도 엄격한 사용자 동의 절차를 준수한다.",
+                        neutralScore: -1,
+                        stats: { progress: -10, funding: -5, social: +15, risk: -15 },
+                        feedback: "성능 향상 속도는 더뎌졌으나 정당하고 투명한 윤리 기준을 확립했습니다."
+                    }
+                ]
+            },
+            {
+                id: 7,
+                topic: "이중 용도 기술 (Dual-Use)",
+                title: "선한 의도 연구의 치명적 악용 가능성",
+                text: "질병 예방 목적으로 연구하던 인공 바이러스/알고리즘이 역설적으로 생화학 무기나 사이버 테러 도구로 변형될 수 있음을 깨달았습니다. 정부는 연구를 계속 진행하라고 압박합니다.",
+                choices: [
+                    {
+                        label: "Option A: 과학적 탐구의 자유를 주장하며 원래의 연구 목표대로 추진한다.",
+                        neutralScore: +2,
+                        stats: { progress: +15, funding: +10, social: -25, risk: +30 },
+                        feedback: "학술적 성과는 거두었으나, 기술이 블랙마켓으로 유출될 심각한 보안 위협이 생겼습니다."
+                    },
+                    {
+                        label: "Option B: 악용 위험이 해결될 때까지 핵심 연구 파트를 봉인하거나 폐기한다.",
+                        neutralScore: -2,
+                        stats: { progress: -25, funding: -15, social: +20, risk: -25 },
+                        feedback: "수년간의 공적이 물품품이 되었지만, 인류에 미칠 재앙적 비극을 사전에 막았습니다."
+                    }
+                ]
+            },
+            {
+                id: 8,
+                topic: "연구비 및 고용 유지",
+                title: "연구 중단 요구와 연구실 식구들의 생계",
+                text: "연구의 위험성을 이유로 시민단체가 연구 중단을 요구합니다. 연구를 중단하면 그동안 함께 고생한 청년 연구원 10명이 당장 직장을 잃고 연구실이 폐쇄됩니다.",
+                choices: [
+                    {
+                        label: "Option A: 연구원들의 생계와 연구 연속성을 위해 시위를 무시하고 강행한다.",
+                        neutralScore: +1,
+                        stats: { progress: +10, funding: +15, social: -15, risk: +10 },
+                        feedback: "연구실 팀원들의 직장은 지켰으나, 시민 사회와의 소통 부재로 비난이 거세집니다."
+                    },
+                    {
+                        label: "Option B: 시민단체와 공개 청문회를 열고 요구사항을 반영하여 연구 규모를 축소한다.",
+                        neutralScore: -1,
+                        stats: { progress: -15, funding: -20, social: +25, risk: -10 },
+                        feedback: "예산 감축으로 고통스럽지만, 시민들과 협력하는 민주적 윤리 모델을 제시했습니다."
+                    }
+                ]
+            },
+            {
+                id: 9,
+                topic: "예상치 못한 뜻밖의 대발견",
+                title: "뜻밖의 부작용에서 발견된 긍정적 가능성",
+                text: "실험 도중 발생한 변종 반응에서 인류의 난제를 해결할 새로운 열쇠가 발견되었습니다. 하지만 기존 윤리 승인 범위를 벗어난 예외적 시도입니다.",
+                choices: [
+                    {
+                        label: "Option A: 즉시 규제 유예(샌드박스)를 신청하고 획기적 신기술 연구로 전환한다.",
+                        neutralScore: 0,
+                        stats: { progress: +30, funding: +20, social: +10, risk: +10 },
+                        feedback: "유연한 대처로 예상치 못한 대혁신을 이루어내었으며 사회적 기대감이 커집니다."
+                    },
+                    {
+                        label: "Option B: 원칙대로 기존 윤리 규정을 엄수하고 위험 요소를 완전 제거 후 재시도한다.",
+                        neutralScore: -1,
+                        stats: { progress: -5, funding: +0, social: +10, risk: -15 },
+                        feedback: "대발견의 타이밍은 놓쳤으나 정석적이고 안정적인 연구 태도를 고수했습니다."
+                    }
+                ]
+            },
+            {
+                id: 10,
+                topic: "최종 책임 발표",
+                title: "학술 대회에서의 기술 사회적 책임 선언",
+                text: "세계 과학기술 총회 키노트 연설자로 초대받았습니다. 과학자의 가치 중립성과 사회적 책임에 대해 전 세계 학자들 앞에서 최종 입장을 발표할 시간입니다.",
+                choices: [
+                    {
+                        label: "Option A: \"과학자는 오직 연관 데이터와 검증에만 책임이 있으며, 활용은 사회의 몫이다.\"",
+                        neutralScore: +3,
+                        stats: { progress: +15, funding: +10, social: -15, risk: +15 },
+                        feedback: "가치 중립적 과학관을 천명하며 전통적 정통 과학자 그룹의지지를 받았습니다."
+                    },
+                    {
+                        label: "Option B: \"과학자는 자신이 창조한 기술이 가져올 미래 사회적 영향에 무한한 윤리적 책임을 진다.\"",
+                        neutralScore: -3,
+                        stats: { progress: +5, funding: -5, social: +30, risk: -20 },
+                        feedback: "가치 지향적 책임 윤리를 선언하며 세계적인 과학 윤리 운동의 선구자가 되었습니다."
+                    }
+                ]
+            }
+        ];
+
+        // 4 Ending Types Configuration
+        const ENDINGS = {
+            DANGEROUS_SUCCESS: {
+                title: "[엔딩 1] 위험한 성공 (Dangerous Success)",
+                icon: "fa-solid fa-biohazard text-pixelRed",
+                desc: `당신은 압도적인 연구 성과와 엄청난 자금을 확보했습니다. 학계와 시장은 당신의 혁신에 열광하지만, 최소한의 윤리적 가이드라인조차 무시된 기술은 사회에 돌이킬 수 없는 피해와 위험을 야기했습니다.\n\n"기술의 유용성에만 몰두하고 사회적 파장을 외면할 때 과학은 인류를 위협하는 재앙이 될 수 있다."`
+            },
+            CONSCIENCE_PRESERVED: {
+                title: "[엔딩 2] 지켜낸 양심 · 잃은 성과 (Conscience Preserved)",
+                icon: "fa-solid fa-shield-halved text-pixelYellow",
+                desc: `당신은 엄격한 윤리 원칙과 사회적 책임을 끝까지 고수했습니다. 그 결과 어떤 사회적 피해도 발생하지 않았고 대중의 신뢰는 얻었으나, 연구 예산이 고갈되고 주요 연구 프로젝트가 중단되었습니다.\n\n"고결한 윤리 의식은 지켜냈지만, 한계에 부딪힌 연구 성과와 연구팀의 생계 문제는 숙제로 남았습니다."`
+            },
+            RESPONSIBLE_INNOVATION: {
+                title: "[엔딩 3] 책임 있는 혁신 (Responsible Innovation)",
+                icon: "fa-solid fa-award text-pixelGreen",
+                desc: `축하합니다! 당신은 과학기술의 성과와 윤리적 책임을 완벽하게 조화시킨 최고 수준의 연구자입니다. 사회적 부작용을 사전에 예방하면서도 정당한 혁신을 이뤄냈으며, 공익과 연구자 양심을 동시에 지켜냈습니다.\n\n"과학기술의 발전은 인간 존엄성과 사회적 책임이라는 궤도 위에서 가장 빛을 발한다."`
+            },
+            PRAGMATIC_COMPROMISE: {
+                title: "[엔딩 4] 타협의 연구자 (Pragmatic Compromiser)",
+                icon: "fa-solid fa-scale-balanced text-pixelCyan",
+                desc: `당신은 각 이해관계자들의 상충하는 요구 속에서 현실적인 타협안을 찾았습니다. 완벽한 성과도, 무결한 윤리도 달성하지 못했으나 치명적 위기를 피하며 시뮬레이션을 완수했습니다.\n\n"현대 사회의 복잡한 딜레마 속에서 과학자가 걸어가야 할 지혜로운 중용의 길을 고민하게 합니다."`
+            }
+        };
+
+        // 3 Topic Questions
+        const DISCUSSION_TOPICS = {
+            1: {
+                title: "Q1. 가장 고민했던 딜레마 선택과 판단 기준",
+                question: "10가지 상황 중 가장 결정을 내리기 힘들었던 선택은 무엇이었으며, 여러분은 어떤 가치(연구 성과, 안전, 신뢰, 연구팀 등)를 최우선 기준으로 판단했나요?",
+                example: "예시: 군사 연구비 지원 선택이 가장 고민되었습니다. 연구실 폐쇄를 막기 위해 자금이 절실했지만 공익 훼손을 고려해 거절했습니다."
+            },
+            2: {
+                title: "Q2. 이해관계 충돌 시 연구자의 행동 원칙",
+                question: "연구소, 정부, 시민단체, 기업 등 등장인물마다 요구가 달랐습니다. 이해관계가 충돌할 때 과학자는 어떤 원칙을 세워야 할까요?",
+                example: "학생 제시 예시: '무조건 공익을 훼손하는가'를 최고의 판단 기준으로 삼아야 합니다."
+            },
+            3: {
+                title: "Q3. 가치 중립 / 가치 지향 보완 제도",
+                question: "가치 중립과 가치 지향 각 입장의 한계를 보완하기 위해 사회적으로 어떤 제도(윤리 심의 위원회, 정보 공개 등)가 필요할까요?",
+                example: "학생 제시 예시: '세계 과학 윤리 위원회'를 정례화하고 매달 필수 위험성 평가 회의를 실시하도록 제도화해야 합니다."
+            }
+        };
+
+        let currentTopicId = 1;
+
+        // BroadcastChannel & Local Cache for Multi-tab & Real-time Class Sync
+        const broadcastChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('ethics_forum_sync') : null;
+        let localPostsStore = JSON.parse(localStorage.getItem('ethics_forum_posts_v2') || '[]');
+
+        if (broadcastChannel) {
+            broadcastChannel.onmessage = (event) => {
+                if (event.data && event.data.type === 'NEW_POST') {
+                    localPostsStore = JSON.parse(localStorage.getItem('ethics_forum_posts_v2') || '[]');
+                    renderCurrentTopicPosts(currentTopicId);
+                }
+            };
+        }
+
+        function saveLocalPosts() {
+            localStorage.setItem('ethics_forum_posts_v2', JSON.stringify(localPostsStore));
+            if (broadcastChannel) {
+                broadcastChannel.postMessage({ type: 'NEW_POST' });
+            }
+        }
+
+        function renderCurrentTopicPosts(topicId) {
+            const container = document.getElementById('forum-posts-container');
+            const topicPosts = localPostsStore.filter(p => p.topicId === topicId);
+
+            if (topicPosts.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-400 font-terminal">
+                        <i class="fa-regular fa-comment-dots text-3xl mb-2 text-pixelCyan"></i>
+                        <p class="text-xs">아직 등록된 윤리적 의견이 없습니다.<br/>아래 입력창에 첫 번째 답변을 작성해 보세요!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = topicPosts.map(post => `
+                <div class="bg-pixelFrame p-3 rounded border border-gray-700 space-y-1.5 animate-fade-in">
+                    <div class="flex justify-between items-center text-xs border-b border-gray-800 pb-1">
+                        <span class="font-bold text-pixelCyan flex items-center gap-1 font-retro">
+                            <i class="fa-solid fa-user-astronaut"></i> ${post.userName || '익명 연구원'}
+                        </span>
+                        <span class="text-[10px] text-gray-400 font-mono">${post.time || '방금 전'}</span>
+                    </div>
+                    <p class="text-xs text-gray-200 leading-relaxed font-sans whitespace-pre-line">${post.content}</p>
+                </div>
+            `).join('');
+
+            // Scroll to bottom when updated
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function handleFormSubmit(e) {
+            if (e) e.preventDefault();
+            const inputEl = document.getElementById('forum-input-text');
+            const nameEl = document.getElementById('student-nickname-input');
+            
+            if (!inputEl) return;
+
+            const text = inputEl.value.trim();
+            if (!text) return;
+
+            let authorName = nameEl ? nameEl.value.trim() : '';
+            if (!authorName) {
+                authorName = '익명 연구원 ' + Math.floor(100 + Math.random() * 900);
+                if (nameEl) nameEl.value = authorName;
+            }
+
+            const newPost = {
+                id: Date.now(),
+                topicId: currentTopicId,
+                userName: authorName,
+                content: text,
+                time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            };
+
+            localPostsStore.push(newPost);
+            saveLocalPosts();
+            inputEl.value = '';
+            playAudio('click');
+            renderCurrentTopicPosts(currentTopicId);
+        }
+
+        function switchTopicTab(topicId) {
+            currentTopicId = topicId;
+            [1, 2, 3].forEach(id => {
+                const tab = document.getElementById(`tab-q${id}`);
+                if (tab) {
+                    if (id === topicId) {
+                        tab.className = "flex-1 min-w-[100px] py-2 px-2 rounded bg-pixelCyan text-black font-bold font-retro truncate";
+                    } else {
+                        tab.className = "flex-1 min-w-[100px] py-2 px-2 rounded bg-pixelFrame text-gray-300 hover:text-white font-retro truncate";
+                    }
+                }
+            });
+
+            const topic = DISCUSSION_TOPICS[topicId];
+            const topicBox = document.getElementById('topic-info-box');
+            if (topicBox) {
+                topicBox.innerHTML = `
+                    <span class="text-[11px] text-pixelYellow font-retro">${topic.title}</span>
+                    <h4 class="text-xs font-bold text-white mt-1 leading-snug">${topic.question}</h4>
+                    <div class="text-[11px] text-gray-300 bg-pixelFrame p-2 rounded border border-gray-700 leading-relaxed mt-2">
+                        💡 <strong>토론 힌트:</strong> ${topic.example}
+                    </div>
+                `;
+            }
+
+            renderCurrentTopicPosts(topicId);
+        }
+
+        /* EXTENDED GAME ENGINE LOGIC WITH VISUAL EFFECTS */
+        class EnhancedEthicsEngine extends EthicsGameEngine {
+            makeChoice(choiceIdx) {
+                const sc = SCENARIOS[this.currentStep];
+                const choice = sc.choices[choiceIdx];
+
+                playAudio('select');
+
+                const prevRisk = this.stats.risk;
+                const prevSocial = this.stats.social;
+
+                // Apply Stat Changes
+                for (let key in choice.stats) {
+                    this.stats[key] += choice.stats[key];
+                }
+                this.neutralityScore += choice.neutralScore;
+                this.history.push({ step: this.currentStep + 1, choiceLabel: choice.label });
+
+                // Trigger Screen Visual Effects
+                const mainApp = document.body;
+                if (this.stats.risk - prevRisk >= 15 || this.stats.risk >= 60) {
+                    // Trigger Screen Shake on high risk
+                    playAudio('alert');
+                    mainApp.classList.add('shake-effect');
+                    setTimeout(() => mainApp.classList.remove('shake-effect'), 600);
+                } else if (this.stats.social - prevSocial >= 15) {
+                    // Trigger Green Flash on high trust gain
+                    mainApp.classList.add('green-flash-effect');
+                    setTimeout(() => mainApp.classList.remove('green-flash-effect'), 800);
+                }
+
+                // Add Bar Glint Animation
+                document.querySelectorAll('#stat-progress-bar, #stat-funding-bar, #stat-social-bar, #stat-risk-bar').forEach(bar => {
+                    bar.classList.add('stat-bar-pulse');
+                    setTimeout(() => bar.classList.remove('stat-bar-pulse'), 1200);
+                });
+
+                this.updateStatsUI();
+
+                // Show Choice Impact Visualizer Card
+                const impactCard = document.getElementById('decision-impact-card');
+                const badgeContainer = document.getElementById('impact-badges-container');
+                const feedbackText = document.getElementById('decision-feedback-text');
+
+                const getDeltaBadge = (name, val, colorClass) => {
+                    if (!val) return '';
+                    const sign = val > 0 ? `+${val}` : `${val}`;
+                    return `<span class="px-2 py-1 rounded bg-pixelBg border border-gray-700 ${colorClass}">${name} ${sign}%</span>`;
+                };
+
+                badgeContainer.innerHTML = [
+                    getDeltaBadge('연구 성과', choice.stats.progress, 'text-pixelCyan'),
+                    getDeltaBadge('연구 예산', choice.stats.funding, 'text-pixelYellow'),
+                    getDeltaBadge('사회적 신뢰', choice.stats.social, 'text-pixelGreen'),
+                    getDeltaBadge('사회적 피해', choice.stats.risk, 'text-pixelRed')
+                ].join('');
+
+                feedbackText.innerHTML = `<strong>의사결정 후속 영향:</strong> ${choice.feedback}`;
+                impactCard.classList.remove('hidden');
+
+                // Disable Buttons temporarily
+                const btns = document.querySelectorAll('#choice-buttons-container button');
+                btns.forEach(b => b.onclick = null);
+
+                setTimeout(() => {
+                    this.loadScenario(this.currentStep + 1);
+                }, 2200);
+            }
+
+            updateStatsUI() {
+                super.updateStatsUI();
+
+                // Calculate Live Value Orientation Tracker (%)
+                const totalPoints = Math.max(1, Math.abs(this.neutralityScore) + 10);
+                let respRatio = 50;
+                let neutralRatio = 50;
+
+                if (this.neutralityScore > 0) {
+                    neutralRatio = Math.min(85, 50 + (this.neutralityScore * 3.5));
+                    respRatio = 100 - neutralRatio;
+                } else if (this.neutralityScore < 0) {
+                    respRatio = Math.min(85, 50 + (Math.abs(this.neutralityScore) * 3.5));
+                    neutralRatio = 100 - respRatio;
+                }
+
+                document.getElementById('tracker-responsibility-bar').style.width = `${respRatio}%`;
+                document.getElementById('tracker-neutrality-bar').style.width = `${neutralRatio}%`;
+                document.getElementById('tracker-resp-pct').textContent = `가치지향 ${Math.round(respRatio)}%`;
+                document.getElementById('tracker-neutral-pct').textContent = `가치중립 ${Math.round(neutralRatio)}%`;
+            }
+
+            finishGame() {
+                playAudio('alert');
+
+                document.getElementById('screen-gameplay').classList.add('hidden');
+                document.getElementById('screen-result').classList.remove('hidden');
+
+                document.getElementById('final-stat-progress').textContent = `${this.stats.progress}%`;
+                document.getElementById('final-stat-funding').textContent = `${this.stats.funding}%`;
+                document.getElementById('final-stat-social').textContent = `${this.stats.social}%`;
+                document.getElementById('final-stat-risk').textContent = `${this.stats.risk}%`;
+
+                // Determine Ending Type (4 Types)
+                let endingKey = "PRAGMATIC_COMPROMISE";
+
+                if (this.stats.risk >= 55 && this.stats.progress >= 60) {
+                    endingKey = "DANGEROUS_SUCCESS";
+                } else if (this.stats.social >= 65 && this.stats.risk <= 25 && this.stats.progress >= 60) {
+                    endingKey = "RESPONSIBLE_INNOVATION";
+                } else if (this.stats.risk <= 20 && (this.stats.progress < 45 || this.stats.funding < 40)) {
+                    endingKey = "CONSCIENCE_PRESERVED";
+                }
+
+                const ending = ENDINGS[endingKey];
+                this.lastAlignment = ending.title;
+
+                document.getElementById('ending-icon').className = `${ending.icon} text-4xl glow-text-yellow animate-bounce`;
+                document.getElementById('result-ending-title').textContent = ending.title;
+                document.getElementById('result-ending-desc').textContent = ending.desc;
+            }
+        }
+
+        // Upgrade game instance
+        window.gameEngine = new EnhancedEthicsEngine();
+
+        // Topic Tab Render Logic Hook
+        window.switchTopicTab = switchTopicTab;
+        window.handleFormSubmit = handleFormSubmit;
+        window.renderCurrentTopicPosts = renderCurrentTopicPosts;
+    </script>
+
+    <!-- Sound Synthesizer & Event Listeners Script -->
+    <script>
+        /* Web Audio API Synthesizer for Retro 8-bit Sounds */
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+        }
+
+        function playAudio(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'click') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'select') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.setValueAtTime(600, now + 0.08);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.16);
+                    osc.start(now);
+                    osc.stop(now + 0.16);
+                } else if (type === 'alert') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.setValueAtTime(300, now + 0.1);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                }
+            } catch (e) { console.warn("Audio playback error", e); }
+        }
+
+        // Sound Toggle Button
+        document.getElementById('audio-toggle-btn').addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('sound-icon');
+            const label = document.querySelector('#audio-toggle-btn span');
+            if (soundEnabled) {
+                icon.className = "fa-solid fa-volume-high";
+                label.textContent = "SOUND ON";
+                playAudio('click');
+            } else {
+                icon.className = "fa-solid fa-volume-xmark";
+                label.textContent = "SOUND OFF";
+            }
+        });
+
+        // Render Character Cards on Screen 1
+        function renderCharacterSelectScreen() {
+            const container = document.getElementById('character-card-container');
+            container.innerHTML = CHARACTERS.map(char => `
+                <div class="bg-pixelPanel p-4 rounded-lg pixel-border hover:border-pixelCyan transition cursor-pointer flex flex-col justify-between space-y-4 group"
+                     onclick="window.gameEngine.selectCharacter('${char.id}'); playAudio('click');">
+                    <div class="space-y-3">
+                        <div class="w-full h-36 bg-pixelBg rounded border border-gray-700 p-2 flex items-center justify-center group-hover:scale-105 transition">
+                            ${char.avatarSvg}
+                        </div>
+                        <div>
+                            <span class="text-[10px] bg-pixelFrame text-pixelYellow px-2 py-0.5 rounded font-retro">${char.field}</span>
+                            <h3 class="font-retro text-sm text-pixelCyan mt-1 font-bold group-hover:text-white">${char.name}</h3>
+                        </div>
+                        <p class="text-xs text-gray-300 leading-relaxed font-sans">
+                            ${char.desc}
+                        </p>
+                    </div>
+
+                    <div class="bg-pixelBg p-2 rounded border border-gray-800 text-[11px] font-terminal space-y-1">
+                        <div class="flex justify-between text-pixelCyan"><span>초기 성과</span><span>${char.initialStats.progress}%</span></div>
+                        <div class="flex justify-between text-pixelYellow"><span>초기 예산</span><span>${char.initialStats.funding}%</span></div>
+                        <div class="flex justify-between text-pixelGreen"><span>사회적 가치</span><span>${char.initialStats.social}%</span></div>
+                    </div>
+
+                    <button class="w-full bg-pixelFrame group-hover:bg-pixelCyan group-hover:text-black font-retro text-xs py-2.5 rounded border border-gray-700 font-bold transition">
+                        이 연구자로 시작
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Setup Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCharacterSelectScreen();
+
+            // Restart Button
+            const restartBtn = document.getElementById('btn-restart-game');
+            if (restartBtn) {
+                restartBtn.addEventListener('click', () => {
+                    playAudio('click');
+                    document.getElementById('screen-character-select').classList.remove('hidden');
+                    document.getElementById('screen-gameplay').classList.add('hidden');
+                    document.getElementById('screen-result').classList.add('hidden');
+                });
+            }
+
+            // Forum Form Submit Listener Safety Backup
+            const forumForm = document.getElementById('forum-input-form');
+            if (forumForm) {
+                forumForm.addEventListener('submit', handleFormSubmit);
+            }
+
+            // Open/Close Discussion Modal
+            const modal = document.getElementById('modal-discussion');
+            const showDiscussionBtn = document.getElementById('btn-show-discussion');
+            const closeDiscussionBtn = document.getElementById('btn-close-discussion');
+
+            if (showDiscussionBtn && modal) {
+                showDiscussionBtn.addEventListener('click', () => {
+                    playAudio('click');
+                    modal.classList.remove('hidden');
+                    switchTopicTab(currentTopicId || 1);
+                });
+            }
+            if (closeDiscussionBtn && modal) {
+                closeDiscussionBtn.addEventListener('click', () => {
+                    playAudio('click');
+                    modal.classList.add('hidden');
+                });
+            }
+
+            // Share to Forum Button
+            const shareBtn = document.getElementById('btn-share-to-forum');
+            if (shareBtn) {
+                shareBtn.addEventListener('click', () => {
+                    const alignment = window.gameEngine.lastAlignment || "책임 있는 혁신";
+                    const charName = window.gameEngine.selectedChar?.name || "과학자";
+                    const summaryText = `${charName}로 플레이하여 [${alignment}] 결과를 얻었습니다. (연구 성과 ${window.gameEngine.stats.progress}%, 사회적 가치 ${window.gameEngine.stats.social}%)`;
+                    
+                    const inputEl = document.getElementById('forum-input-text');
+                    if (inputEl) {
+                        inputEl.value = summaryText;
+                    }
+
+                    if (modal) {
+                        modal.classList.remove('hidden');
+                        switchTopicTab(1);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
